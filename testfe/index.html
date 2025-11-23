@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Chat Test</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div>
+        <input type="text" id="roomInput" placeholder="Room name" value="general">
+        <button onclick="joinRoom()">Join Room</button>
+        <button onclick="leaveRoom()">Leave Room</button>
+    </div>
+    
+    <div>
+        <input type="text" id="messageInput" placeholder="Type your message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <div id="messages" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></div>
+    
+    <div id="typingIndicator"></div>
+
+    <script>
+        const socket = io('http://localhost:3000');
+        
+        // Socket event listeners
+        socket.on('connect', () => {
+            addMessage('System: Connected to server');
+        });
+        
+        socket.on('disconnect', () => {
+            addMessage('System: Disconnected from server');
+        });
+        
+        socket.on('receive_message', (data) => {
+            addMessage(`${data.sender}: ${data.content}`);
+        });
+        
+        socket.on('chat_history', (messages) => {
+            addMessage('System: Chat history loaded');
+            messages.forEach(msg => {
+                addMessage(`${msg.sender}: ${msg.content}`);
+            });
+        });
+        
+        socket.on('user_typing', (data) => {
+            const indicator = document.getElementById('typingIndicator');
+            if (data.isTyping) {
+                indicator.innerHTML = `${data.user} is typing...`;
+            } else {
+                indicator.innerHTML = '';
+            }
+        });
+        
+        function joinRoom() {
+            const room = document.getElementById('roomInput').value;
+            socket.emit('join_room', room);
+            addMessage(`System: Joined room ${room}`);
+        }
+        
+        function leaveRoom() {
+            const room = document.getElementById('roomInput').value;
+            socket.emit('leave_room', room);
+            addMessage(`System: Left room ${room}`);
+        }
+        
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const room = document.getElementById('roomInput').value;
+            const message = messageInput.value;
+            
+            if (message.trim()) {
+                socket.emit('send_message', {
+                    room: room,
+                    sender: 'TestUser',
+                    content: message
+                });
+                messageInput.value = '';
+            }
+        }
+        
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Handle Enter key
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
